@@ -1,0 +1,48 @@
+project_id = "gphmcbniijsoplnfifgx"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+[inbucket]
+enabled = true
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[functions.google-auth-url]
+verify_jwt = true
+
+[functions.google-auth-callback]
+verify_jwt = false
+
+[functions.calendar-create-event]
+verify_jwt = true
+
+[functions.award-badge]
+verify_jwt = true
+
+[functions.generate-certificate]
+verify_jwt = true
+
+[functions.ai-chat-helper]
+verify_jwt = false
+
+[functions.toxicity-filter]
+verify_jwt = false
+
+[analytics]
+enabled = false
+port = 54327
+vector_port = 54328
