@@ -4,11 +4,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, BookOpen, Calendar, Users, Award, Video } from 'lucide-react';
+import { LogOut, BookOpen, Calendar, Users, Award, Video, Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import UpcomingSessions from '@/components/UpcomingSessions';
 import AIChatBot from '@/components/AIChatBot';
+import { ScheduleSessionForm } from '@/components/ScheduleSessionForm';
+import { MentorSessionRequests } from '@/components/MentorSessionRequests';
+import { ApprovedSessions } from '@/components/ApprovedSessions';
+import { MySessionRequests } from '@/components/MySessionRequests';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -16,22 +20,60 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<any>(null);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    return document.documentElement.classList.contains('dark');
+  });
+
+  const toggleDarkMode = () => {
+    document.documentElement.classList.toggle('dark');
+    setIsDarkMode(!isDarkMode);
+    localStorage.setItem('theme', !isDarkMode ? 'dark' : 'light');
+  };
 
   // Fetch user profile
   useEffect(() => {
     if (user) {
       const fetchProfile = async () => {
-        const { data } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-        
-        if (data) {
-          setProfile(data);
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          
+          if (error) {
+            console.error('Error fetching profile:', error);
+            return;
+          }
+          
+          if (data) {
+            setProfile(data);
+          }
+        } catch (error) {
+          console.error('Error fetching profile:', error);
         }
       };
       fetchProfile();
+      
+      // Set up real-time subscription for profile changes
+      const channel = supabase
+        .channel('profile_changes')
+        .on('postgres_changes', 
+          { 
+            event: 'UPDATE', 
+            schema: 'public', 
+            table: 'profiles',
+            filter: `user_id=eq.${user.id}` 
+          }, 
+          (payload) => {
+            setProfile(payload.new);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user]);
 
@@ -62,10 +104,19 @@ export default function Dashboard() {
               Welcome back, {user?.user_metadata?.full_name || user?.email}!
             </p>
           </div>
-          <Button onClick={handleSignOut} variant="outline" size="sm">
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={toggleDarkMode} variant="outline" size="sm">
+              {isDarkMode ? (
+                <Sun className="h-4 w-4" />
+              ) : (
+                <Moon className="h-4 w-4" />
+              )}
+            </Button>
+            <Button onClick={handleSignOut} variant="outline" size="sm">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -104,8 +155,24 @@ export default function Dashboard() {
                   <strong>Email:</strong> {user?.email}
                 </p>
                 <p className="text-sm">
-                  <strong>Name:</strong> {user?.user_metadata?.full_name || 'Not set'}
+                  <strong>Name:</strong> {profile?.username || user?.user_metadata?.full_name || 'Not set'}
                 </p>
+                {profile && (
+                  <>
+                    <p className="text-sm">
+                      <strong>Rating:</strong> ⭐ {profile.rating?.toFixed(1) || '0.0'}
+                    </p>
+                    <p className="text-sm">
+                      <strong>Sessions Taught:</strong> {profile.total_sessions_taught || 0}
+                    </p>
+                    <p className="text-sm">
+                      <strong>Sessions Attended:</strong> {profile.total_sessions_attended || 0}
+                    </p>
+                    <p className="text-sm">
+                      <strong>Credits:</strong> {profile.credits || 0}
+                    </p>
+                  </>
+                )}
                 <Button className="w-full mt-4" variant="outline">
                   Complete Profile
                 </Button>
@@ -115,6 +182,28 @@ export default function Dashboard() {
 
           {/* Upcoming Sessions */}
           <UpcomingSessions />
+
+          {/* Approved Sessions with Room IDs */}
+          <div className="md:col-span-2 lg:col-span-3">
+            <ApprovedSessions />
+          </div>
+
+          {/* My Session Requests Status */}
+          <div className="md:col-span-2 lg:col-span-3">
+            <MySessionRequests />
+          </div>
+
+          {/* Mentor Session Requests - Only show if user is a mentor */}
+          {(profile?.is_mentor || profile?.total_sessions_taught > 0) && (
+            <div className="md:col-span-2 lg:col-span-3">
+              <MentorSessionRequests />
+            </div>
+          )}
+
+          {/* Schedule New Session Form */}
+          <div className="md:col-span-2">
+            <ScheduleSessionForm />
+          </div>
 
           {/* Video Call Integration */}
           <Card className="card-clean">

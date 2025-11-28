@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Video, VideoOff, Mic, MicOff, PhoneOff, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateRoomId } from '@/lib/roomUtils';
+import { VideoChat } from './VideoChat';
 
 interface VideoCallProps {
   sessionId?: string;
@@ -29,7 +30,7 @@ export const VideoCall = ({ sessionId, onEndCall }: VideoCallProps) => {
     endCall,
   } = useWebRTC({
     roomId: isJoining ? '' : roomId,
-    signalingServerUrl: 'ws://localhost:8080',
+    signalingServerUrl: import.meta.env.VITE_SIGNALING_SERVER_URL || 'ws://localhost:8081',
   });
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
@@ -158,79 +159,92 @@ export const VideoCall = ({ sessionId, onEndCall }: VideoCallProps) => {
           </div>
         </div>
 
-        {/* Video Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-          {/* Local Video */}
-          <Card className="relative overflow-hidden bg-black">
-            <video
-              ref={localVideoRef}
-              autoPlay
-              muted
-              playsInline
-              className="w-full h-[400px] object-cover"
-            />
-            <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-white text-sm">
-              You {isVideoOff && '(Video Off)'}
+        {/* Main Content: Video Grid + Chat */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          {/* Video Section - 2 columns */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Video Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Local Video */}
+              <Card className="relative overflow-hidden bg-black">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-[350px] object-cover"
+                />
+                <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-white text-sm">
+                  You {isVideoOff && '(Video Off)'}
+                </div>
+              </Card>
+
+              {/* Remote Videos */}
+              {Array.from(remoteStreams.entries()).map(([peerId], index) => (
+                <Card key={peerId} className="relative overflow-hidden bg-black">
+                  <video
+                    ref={(el) => {
+                      if (el) remoteVideoRefs.current.set(peerId, el);
+                    }}
+                    autoPlay
+                    playsInline
+                    className="w-full h-[350px] object-cover"
+                  />
+                  <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-white text-sm">
+                    Peer {index + 1}
+                  </div>
+                </Card>
+              ))}
+
+              {/* Waiting for peer */}
+              {remoteStreams.size === 0 && (
+                <Card className="relative overflow-hidden bg-gray-800 flex items-center justify-center h-[350px]">
+                  <div className="text-center text-gray-400">
+                    <Video className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <p>Waiting for peer to join...</p>
+                    <p className="text-sm mt-2">Share the room ID with your peer</p>
+                  </div>
+                </Card>
+              )}
             </div>
-          </Card>
 
-          {/* Remote Videos */}
-          {Array.from(remoteStreams.entries()).map(([peerId], index) => (
-            <Card key={peerId} className="relative overflow-hidden bg-black">
-              <video
-                ref={(el) => {
-                  if (el) remoteVideoRefs.current.set(peerId, el);
-                }}
-                autoPlay
-                playsInline
-                className="w-full h-[400px] object-cover"
-              />
-              <div className="absolute bottom-2 left-2 bg-black/70 px-2 py-1 rounded text-white text-sm">
-                Peer {index + 1}
-              </div>
-            </Card>
-          ))}
+            {/* Controls */}
+            <div className="flex justify-center gap-4">
+              <Button
+                size="lg"
+                variant={isMuted ? 'destructive' : 'secondary'}
+                onClick={toggleMute}
+                className="rounded-full w-16 h-16"
+              >
+                {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+              </Button>
 
-          {/* Waiting for peer */}
-          {remoteStreams.size === 0 && (
-            <Card className="relative overflow-hidden bg-gray-800 flex items-center justify-center h-[400px]">
-              <div className="text-center text-gray-400">
-                <Video className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p>Waiting for peer to join...</p>
-                <p className="text-sm mt-2">Share the room ID with your peer</p>
-              </div>
-            </Card>
-          )}
-        </div>
+              <Button
+                size="lg"
+                variant={isVideoOff ? 'destructive' : 'secondary'}
+                onClick={toggleVideo}
+                className="rounded-full w-16 h-16"
+              >
+                {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
+              </Button>
 
-        {/* Controls */}
-        <div className="flex justify-center gap-4">
-          <Button
-            size="lg"
-            variant={isMuted ? 'destructive' : 'secondary'}
-            onClick={toggleMute}
-            className="rounded-full w-16 h-16"
-          >
-            {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-          </Button>
+              <Button
+                size="lg"
+                variant="destructive"
+                onClick={handleEndCall}
+                className="rounded-full w-16 h-16"
+              >
+                <PhoneOff className="w-6 h-6" />
+              </Button>
+            </div>
+          </div>
 
-          <Button
-            size="lg"
-            variant={isVideoOff ? 'destructive' : 'secondary'}
-            onClick={toggleVideo}
-            className="rounded-full w-16 h-16"
-          >
-            {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
-          </Button>
-
-          <Button
-            size="lg"
-            variant="destructive"
-            onClick={handleEndCall}
-            className="rounded-full w-16 h-16"
-          >
-            <PhoneOff className="w-6 h-6" />
-          </Button>
+          {/* Chat Panel - 1 column */}
+          <div className="lg:col-span-1">
+            <div className="h-[calc(100vh-200px)] lg:h-[720px]">
+              <VideoChat roomId={roomId} />
+            </div>
+          </div>
         </div>
       </div>
     </div>

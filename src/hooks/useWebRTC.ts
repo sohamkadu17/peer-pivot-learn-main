@@ -11,7 +11,10 @@ interface PeerConnection {
   stream?: MediaStream;
 }
 
-export const useWebRTC = ({ roomId, signalingServerUrl = 'ws://localhost:8080' }: UseWebRTCProps) => {
+export const useWebRTC = ({ 
+  roomId, 
+  signalingServerUrl = import.meta.env.VITE_SIGNALING_SERVER_URL || 'ws://localhost:8081' 
+}: UseWebRTCProps) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
@@ -22,6 +25,7 @@ export const useWebRTC = ({ roomId, signalingServerUrl = 'ws://localhost:8080' }
   const ws = useRef<WebSocket | null>(null);
   const peers = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
+  const myPeerId = useRef<string>(`peer-${Math.random().toString(36).substr(2, 9)}`);
 
   const rtcConfig: RTCConfiguration = {
     iceServers: [
@@ -69,13 +73,15 @@ export const useWebRTC = ({ roomId, signalingServerUrl = 'ws://localhost:8080' }
     // Handle ICE candidates
     pc.onicecandidate = (event) => {
       if (event.candidate && ws.current?.readyState === WebSocket.OPEN) {
+        console.log('🧊 Sending ICE candidate to peer:', peerId);
         ws.current.send(
           JSON.stringify({
             type: 'signal',
             data: {
               type: 'ice-candidate',
               candidate: event.candidate,
-              peerId,
+              from: myPeerId.current,
+              to: peerId,
             },
           })
         );
@@ -107,9 +113,40 @@ export const useWebRTC = ({ roomId, signalingServerUrl = 'ws://localhost:8080' }
 
   const handleSignalingMessage = async (message: any) => {
     const { data } = message;
+    console.log('🔄 Handling signal:', data.type, 'from peer:', data.from);
+
+    // Handle new peer joining
+    if (data.type === 'peer-joined') {
+      console.log('👋 New peer joined:', data.peerId);
+      // Create offer for new peer
+      const pc = createPeerConnection(data.peerId);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      if (ws.current?.readyState === WebSocket.OPEN) {
+        ws.current.send(
+          JSON.stringify({
+            type: 'signal',
+            data: {
+              type: 'offer',
+              offer,
+              from: myPeerId.current,
+              to: data.peerId,
+            },
+          })
+        );
+      }
+      return;
+    }
+
+    // Only process messages meant for us
+    if (data.to && data.to !== myPeerId.current) {
+      return;
+    }
 
     if (data.type === 'offer') {
-      const pc = createPeerConnection(data.peerId);
+      console.log('📨 Received offer from:', data.from);
+      const pc = createPeerConnection(data.from);
       await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
@@ -121,18 +158,21 @@ export const useWebRTC = ({ roomId, signalingServerUrl = 'ws://localhost:8080' }
             data: {
               type: 'answer',
               answer,
-              peerId: data.peerId,
+              from: myPeerId.current,
+              to: data.from,
             },
           })
         );
       }
     } else if (data.type === 'answer') {
-      const pc = peers.current.get(data.peerId);
+      console.log('📨 Received answer from:', data.from);
+      const pc = peers.current.get(data.from);
       if (pc) {
         await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
       }
     } else if (data.type === 'ice-candidate') {
-      const pc = peers.current.get(data.peerId);
+      console.log('🧊 Received ICE candidate from:', data.from);
+      const pc = peers.current.get(data.from);
       if (pc && data.candidate) {
         await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
       }
@@ -203,40 +243,59 @@ export const useWebRTC = ({ roomId, signalingServerUrl = 'ws://localhost:8080' }
 
   useEffect(() => {
     const connect = async () => {
+      console.log('🔌 Attempting to connect to signaling server:', signalingServerUrl);
+      console.log('📍 Room ID:', roomId);
+      
       // Initialize local stream
       const stream = await initLocalStream();
-      if (!stream) return;
+      if (!stream) {
+        console.error('❌ Failed to initialize local stream');
+        return;
+      }
+      console.log('✅ Local stream initialized');
 
       // Connect to signaling server
+      console.log('🔗 Connecting to WebSocket...');
       ws.current = new WebSocket(signalingServerUrl);
 
       ws.current.onopen = () => {
+        console.log('✅ WebSocket connected!');
+        console.log('🆔 My peer ID:', myPeerId.current);
         setIsConnected(true);
-        ws.current?.send(JSON.stringify({ type: 'join', room: roomId }));
-        // Initiate call after joining room
-        setTimeout(() => initiateCall(), 500);
+        const joinMessage = { 
+          type: 'join', 
+          room: roomId,
+          peerId: myPeerId.current 
+        };
+        console.log('📤 Sending join message:', joinMessage);
+        ws.current?.send(JSON.stringify(joinMessage));
       };
 
       ws.current.onmessage = (event) => {
         const message = JSON.parse(event.data);
+        console.log('📨 Received message:', message);
         handleSignalingMessage(message);
       };
 
       ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        setError('Failed to connect to signaling server');
+        console.error('❌ WebSocket error:', error);
+        setError('Failed to connect to signaling server. Make sure it\'s running on ' + signalingServerUrl);
       };
 
       ws.current.onclose = () => {
+        console.log('🔌 WebSocket connection closed');
         setIsConnected(false);
       };
     };
 
     if (roomId) {
       connect();
+    } else {
+      console.log('⏸️  No room ID provided, waiting...');
     }
 
     return () => {
+      console.log('🧹 Cleaning up WebRTC connection');
       endCall();
     };
   }, [roomId]);
