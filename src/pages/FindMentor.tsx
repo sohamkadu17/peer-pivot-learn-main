@@ -27,6 +27,13 @@ export default function FindMentor() {
 
   useEffect(() => {
     fetchMentors();
+    
+    // Refresh mentors every 30 seconds to show updated ratings
+    const interval = setInterval(() => {
+      fetchMentors();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchMentors = async () => {
@@ -38,8 +45,19 @@ export default function FindMentor() {
 
       if (error) throw error;
       
+      console.log('📋 FindMentor - Mentors fetched:', {
+        count: data?.length || 0,
+        mentors: data?.map(m => ({
+          username: m.username,
+          rating: m.rating,
+          ratingType: typeof m.rating,
+          ratingValue: m.rating
+        }))
+      });
+      
       setMentors(data || []);
     } catch (error: any) {
+      console.error('❌ Error fetching mentors:', error);
       toast({
         title: 'Error',
         description: 'Failed to load mentors',
@@ -101,8 +119,6 @@ export default function FindMentor() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      <div className="floating-bubbles" />
-      
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">
@@ -130,9 +146,20 @@ export default function FindMentor() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>{mentor.username || 'Anonymous Mentor'}</span>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">{mentor.rating.toFixed(1)}</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`h-4 w-4 ${
+                              star <= Math.round(mentor.rating || 0)
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'fill-gray-300 text-gray-300 dark:fill-gray-600 dark:text-gray-600'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm font-semibold">{mentor.rating?.toFixed(1) || '0.0'}</span>
                     </div>
                   </CardTitle>
                   <CardDescription>Expert Mentor</CardDescription>

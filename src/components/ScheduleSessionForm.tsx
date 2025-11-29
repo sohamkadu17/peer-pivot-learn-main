@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
-import { CalendarIcon, Clock, User, BookOpen } from 'lucide-react';
+import { CalendarIcon, Clock, User, BookOpen, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Mentor {
@@ -47,6 +47,13 @@ export const ScheduleSessionForm = () => {
   useEffect(() => {
     fetchMentors();
     fetchSubjects();
+    
+    // Refresh mentors periodically to show updated ratings
+    const interval = setInterval(() => {
+      fetchMentors();
+    }, 30000); // Refresh every 30 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchMentors = async () => {
@@ -137,8 +144,8 @@ export const ScheduleSessionForm = () => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('session_requests')
+      const { data, error } = await ((supabase as any)
+        .from('session_requests'))
         .insert({
           student_id: user.id,
           mentor_id: selectedMentor,
@@ -205,7 +212,7 @@ export const ScheduleSessionForm = () => {
             <SelectTrigger>
               <SelectValue placeholder="Choose a mentor" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[100] max-h-[300px]">
               {mentors.length === 0 ? (
                 <div className="p-2 text-sm text-muted-foreground text-center">
                   No mentors available
@@ -213,9 +220,26 @@ export const ScheduleSessionForm = () => {
               ) : (
                 mentors.map((mentor) => (
                   <SelectItem key={mentor.user_id} value={mentor.user_id}>
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      {mentor.username || 'Anonymous'} - ⭐ {mentor.rating?.toFixed(1) || '0.0'}
+                    <div className="flex items-center gap-2 w-full">
+                      <User className="w-4 h-4 flex-shrink-0" />
+                      <span className="truncate flex-1">{mentor.username || 'Anonymous'}</span>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <span
+                              key={star}
+                              className={`text-xs ${
+                                star <= Math.round(mentor.rating || 0)
+                                  ? 'text-yellow-400'
+                                  : 'text-gray-300 dark:text-gray-600'
+                              }`}
+                            >
+                              ⭐
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-xs font-medium">{mentor.rating?.toFixed(1) || '0.0'}</span>
+                      </div>
                     </div>
                   </SelectItem>
                 ))
@@ -305,7 +329,7 @@ export const ScheduleSessionForm = () => {
         <div className="space-y-2">
           <Label htmlFor="time">Preferred Time *</Label>
           <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-muted-foreground" />
+            <Clock className="w-4 h-4 text-foreground" />
             <Input
               id="time"
               type="time"

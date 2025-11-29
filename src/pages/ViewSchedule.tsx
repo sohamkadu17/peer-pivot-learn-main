@@ -173,8 +173,6 @@ export default function ViewSchedule() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      <div className="floating-bubbles" />
-      
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center gap-4">

@@ -17,6 +17,7 @@ import ViewAchievements from "./pages/ViewAchievements";
 import Challenges from "./pages/Challenges";
 import Leaderboard from "./pages/Leaderboard";
 import VideoCallPage from "./pages/VideoCallPage";
+import FeedbackPage from "./pages/FeedbackPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -94,6 +95,14 @@ const App = () => (
               element={
                 <RequireAuth>
                   <VideoCallPage />
+                </RequireAuth>
+              } 
+            />
+            <Route 
+              path="/feedback" 
+              element={
+                <RequireAuth>
+                  <FeedbackPage />
                 </RequireAuth>
               } 
             />
