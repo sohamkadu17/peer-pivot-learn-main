@@ -33,12 +33,12 @@ const HeroSection = () => {
         <div className="space-y-16">
           {/* Logo and Brand */}
           <div className="flex items-center justify-center gap-4 mb-12 animate-scaleIn">
-            <div className="p-4 rounded-full shadow-lg" style={{ background: 'var(--gradient-primary)' }}>
+            {/* <div className="p-4 rounded-full shadow-lg" style={{ background: 'var(--gradient-primary)' }}>
               <GraduationCap className="w-10 h-10 text-white" />
             </div>
             <h1 className="text-heading text-foreground dark:text-foreground font-black">
               Study Circle
-            </h1>
+            </h1> */}
           </div>
 
           {/* Main Content */}

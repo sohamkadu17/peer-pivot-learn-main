@@ -47,8 +47,6 @@ export default function ResetPassword() {
   if (emailSent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">
-        <div className="floating-bubbles" />
-        
         <Card className="w-full max-w-md card-clean">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold text-magic">Check your email</CardTitle>

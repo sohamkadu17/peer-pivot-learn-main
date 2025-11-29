@@ -93,7 +93,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted">
-      <div className="floating-bubbles" />
+      {/* Floating bubbles removed */}
       
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm">
@@ -306,6 +306,14 @@ export default function Dashboard() {
                 <Button variant="outline" onClick={() => navigate('/leaderboard')}>
                   <Award className="mr-2 h-4 w-4" />
                   Leaderboard
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/feedback')}
+                  className="bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                >
+                  <BookOpen className="mr-2 h-4 w-4" />
+                  Give Feedback
                 </Button>
               </div>
             </CardContent>

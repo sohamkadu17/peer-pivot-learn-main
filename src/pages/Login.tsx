@@ -10,7 +10,7 @@ import { signInEmail, signUpEmail, sendMagicLink, signInWithGoogle } from '@/lib
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, Mail, Lock, User, Chrome } from 'lucide-react';
 import { useEffect } from 'react';
-
+import Navigation from '@/components/Navigation';
 export default function Login() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
