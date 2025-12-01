@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -34,6 +35,8 @@ export const MySessionRequests = () => {
   const { toast } = useToast();
   const [requests, setRequests] = useState<SessionRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
 
   useEffect(() => {
     if (user) {
@@ -192,7 +195,7 @@ export const MySessionRequests = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {requests.map((request) => (
+            {requests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((request) => (
               <Card key={request.id} className={`
                 ${request.status === 'pending' ? 'border-l-4 border-l-yellow-500' : ''}
                 ${request.status === 'approved' ? 'border-l-4 border-l-green-500' : ''}
@@ -276,6 +279,31 @@ export const MySessionRequests = () => {
                 </CardContent>
               </Card>
             ))}
+            
+            {/* Pagination Controls */}
+            {requests.length > itemsPerPage && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage} of {Math.ceil(requests.length / itemsPerPage)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(requests.length / itemsPerPage), prev + 1))}
+                  disabled={currentPage >= Math.ceil(requests.length / itemsPerPage)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

@@ -39,6 +39,8 @@ export const MentorSessionRequests = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
 
   useEffect(() => {
     if (user) {
@@ -274,7 +276,7 @@ export const MentorSessionRequests = () => {
             </div>
           ) : (
             <div className="space-y-4">
-              {requests.map((request) => (
+              {requests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((request) => (
                 <Card key={request.id} className="border-l-4 border-l-orange-500">
                   <CardContent className="pt-4">
                     <div className="space-y-3">
@@ -337,6 +339,31 @@ export const MentorSessionRequests = () => {
                   </CardContent>
                 </Card>
               ))}
+              
+              {/* Pagination Controls */}
+              {requests.length > itemsPerPage && (
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {Math.ceil(requests.length / itemsPerPage)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(Math.ceil(requests.length / itemsPerPage), prev + 1))}
+                    disabled={currentPage >= Math.ceil(requests.length / itemsPerPage)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

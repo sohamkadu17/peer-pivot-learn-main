@@ -39,6 +39,8 @@ export const ApprovedSessions = () => {
   const [sessions, setSessions] = useState<SessionRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedRoomId, setCopiedRoomId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
 
   useEffect(() => {
     if (user) {
@@ -202,7 +204,7 @@ export const ApprovedSessions = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {sessions.map((session) => {
+            {sessions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((session) => {
               const isStudent = session.student_id === user?.id;
               const peerName = isStudent ? session.mentor?.username : session.student?.username;
               const peerRole = isStudent ? 'Mentor' : 'Student';
@@ -314,6 +316,31 @@ export const ApprovedSessions = () => {
                 </Card>
               );
             })}
+            
+            {/* Pagination Controls */}
+            {sessions.length > itemsPerPage && (
+              <div className="flex items-center justify-between pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Page {currentPage} of {Math.ceil(sessions.length / itemsPerPage)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(sessions.length / itemsPerPage), prev + 1))}
+                  disabled={currentPage >= Math.ceil(sessions.length / itemsPerPage)}
+                >
+                  Next
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

@@ -1,0 +1,6 @@
+Category,Count,Percentage
+True Negatives,85,42.50%
+False Positives,23,11.50%
+False Negatives,33,16.50%
+True Positives,59,29.50%
+Total,200,100.00%
