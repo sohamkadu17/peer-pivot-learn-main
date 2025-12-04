@@ -13,6 +13,8 @@ gunicorn==21.2.0
 ## Dataset Management
 kagglehub>=0.2.0
 
-## Advanced Version (Optional - for BERT models)
-# transformers==4.35.0
-# torch==2.1.0
+## Transformer Models (Toxic BERT)
+transformers==4.35.0
+torch==2.1.0
+accelerate==0.24.0
+sentencepiece==0.1.99

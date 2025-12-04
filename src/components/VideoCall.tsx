@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useWebRTC } from '@/hooks/useWebRTC';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, VideoOff, Mic, MicOff, PhoneOff, Copy, Check } from 'lucide-react';
+import { Video, VideoOff, Mic, MicOff, PhoneOff, Copy, Check, Monitor, Pencil, MessageSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateRoomId } from '@/lib/roomUtils';
 import { VideoChat } from './VideoChat';
+import CollaborativeScreenSharing from './CollaborativeScreenSharing';
+import CollaborativeWhiteboard from './CollaborativeWhiteboard';
 
 interface VideoCallProps {
   sessionId?: string;
@@ -16,6 +18,7 @@ export const VideoCall = ({ sessionId, onEndCall }: VideoCallProps) => {
   const [roomId, setRoomId] = useState(sessionId || '');
   const [isJoining, setIsJoining] = useState(!sessionId);
   const [copied, setCopied] = useState(false);
+  const [activePanel, setActivePanel] = useState<'chat' | 'screen' | 'whiteboard'>('chat');
   const { toast } = useToast();
 
   const {
@@ -28,6 +31,9 @@ export const VideoCall = ({ sessionId, onEndCall }: VideoCallProps) => {
     toggleMute,
     toggleVideo,
     endCall,
+    addScreenTrack,
+    removeScreenTrack,
+    remoteScreenStreams,
   } = useWebRTC({
     roomId: isJoining ? '' : roomId,
     signalingServerUrl: import.meta.env.VITE_SIGNALING_SERVER_URL || 'ws://localhost:8081',
@@ -148,7 +154,7 @@ export const VideoCall = ({ sessionId, onEndCall }: VideoCallProps) => {
             {isConnected ? (
               <span className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Connected
+                Connected ({remoteStreams.size} peer{remoteStreams.size !== 1 ? 's' : ''})
               </span>
             ) : (
               <span className="flex items-center gap-2">
@@ -239,10 +245,51 @@ export const VideoCall = ({ sessionId, onEndCall }: VideoCallProps) => {
             </div>
           </div>
 
-          {/* Chat Panel - 1 column */}
+          {/* Right Panel - Chat/Screen/Whiteboard - 1 column */}
           <div className="lg:col-span-1">
-            <div className="h-[calc(100vh-200px)] lg:h-[720px]">
-              <VideoChat roomId={roomId} />
+            {/* Tab Buttons */}
+            <div className="flex gap-2 mb-2">
+              <Button
+                size="sm"
+                variant={activePanel === 'chat' ? 'default' : 'outline'}
+                onClick={() => setActivePanel('chat')}
+                className="flex-1"
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Chat
+              </Button>
+              <Button
+                size="sm"
+                variant={activePanel === 'screen' ? 'default' : 'outline'}
+                onClick={() => setActivePanel('screen')}
+                className="flex-1"
+              >
+                <Monitor className="w-4 h-4 mr-2" />
+                Screen
+              </Button>
+              <Button
+                size="sm"
+                variant={activePanel === 'whiteboard' ? 'default' : 'outline'}
+                onClick={() => setActivePanel('whiteboard')}
+                className="flex-1"
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Board
+              </Button>
+            </div>
+            
+            {/* Panel Content */}
+            <div className="h-[calc(100vh-250px)] lg:h-[680px]">
+              {activePanel === 'chat' && <VideoChat roomId={roomId} />}
+              {activePanel === 'screen' && (
+                <CollaborativeScreenSharing 
+                  roomId={roomId}
+                  addScreenTrack={addScreenTrack}
+                  removeScreenTrack={removeScreenTrack}
+                  remoteScreenStreams={remoteScreenStreams}
+                />
+              )}
+              {activePanel === 'whiteboard' && <CollaborativeWhiteboard roomId={roomId} />}
             </div>
           </div>
         </div>

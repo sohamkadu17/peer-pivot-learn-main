@@ -17,6 +17,8 @@ export const useWebRTC = ({
 }: UseWebRTCProps) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [remoteScreenStreams, setRemoteScreenStreams] = useState<Map<string, MediaStream>>(new Map());
   const [isConnected, setIsConnected] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -25,6 +27,8 @@ export const useWebRTC = ({
   const ws = useRef<WebSocket | null>(null);
   const peers = useRef<Map<string, RTCPeerConnection>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const screenSenders = useRef<Map<string, RTCRtpSender[]>>(new Map());
   const myPeerId = useRef<string>(`peer-${Math.random().toString(36).substr(2, 9)}`);
 
   const rtcConfig: RTCConfiguration = {
@@ -63,11 +67,26 @@ export const useWebRTC = ({
     // Handle incoming remote stream
     pc.ontrack = (event) => {
       const [remoteStream] = event.streams;
-      setRemoteStreams((prev) => {
-        const newMap = new Map(prev);
-        newMap.set(peerId, remoteStream);
-        return newMap;
-      });
+      const track = event.track;
+      
+      console.log('📥 Received track:', track.kind, track.label);
+      
+      // Check if this is a screen share track
+      if (track.label.includes('screen') || track.label.includes('Screen')) {
+        console.log('🖥️ Screen share track detected from peer:', peerId);
+        setRemoteScreenStreams((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(peerId, remoteStream);
+          return newMap;
+        });
+      } else {
+        // Regular video/audio track
+        setRemoteStreams((prev) => {
+          const newMap = new Map(prev);
+          newMap.set(peerId, remoteStream);
+          return newMap;
+        });
+      }
     };
 
     // Handle ICE candidates
@@ -231,6 +250,13 @@ export const useWebRTC = ({
       localStreamRef.current = null;
     }
 
+    // Stop screen stream
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      setScreenStream(null);
+      screenStreamRef.current = null;
+    }
+
     // Close WebSocket
     if (ws.current) {
       ws.current.close();
@@ -238,7 +264,79 @@ export const useWebRTC = ({
     }
 
     setRemoteStreams(new Map());
+    setRemoteScreenStreams(new Map());
     setIsConnected(false);
+  };
+
+  const addScreenTrack = async (stream: MediaStream) => {
+    console.log('🖥️ Adding screen track to all peer connections');
+    console.log('📊 Current peers count:', peers.current.size);
+    console.log('📊 Peer IDs:', Array.from(peers.current.keys()));
+    
+    screenStreamRef.current = stream;
+    setScreenStream(stream);
+
+    const screenTrack = stream.getVideoTracks()[0];
+    const audioTrack = stream.getAudioTracks()[0];
+
+    console.log('🎥 Screen track:', screenTrack?.label, screenTrack?.id);
+    console.log('🔊 Screen audio:', audioTrack?.label, audioTrack?.id);
+
+    if (peers.current.size === 0) {
+      console.warn('⚠️ No peer connections available! Make sure video call is connected first.');
+      return false;
+    }
+
+    // Add screen tracks to all existing peer connections
+    peers.current.forEach((pc, peerId) => {
+      console.log('🔄 Adding track to peer:', peerId, 'Connection state:', pc.connectionState);
+      const senders: RTCRtpSender[] = [];
+      
+      try {
+        // Add video track
+        const videoSender = pc.addTrack(screenTrack, stream);
+        senders.push(videoSender);
+        console.log('✅ Added screen video track to peer:', peerId);
+
+        // Add audio track if available
+        if (audioTrack) {
+          const audioSender = pc.addTrack(audioTrack, stream);
+          senders.push(audioSender);
+          console.log('✅ Added screen audio track to peer:', peerId);
+        }
+
+        screenSenders.current.set(peerId, senders);
+      } catch (err) {
+        console.error('❌ Failed to add screen track to peer:', peerId, err);
+      }
+    });
+
+    return true;
+  };
+
+  const removeScreenTrack = async () => {
+    console.log('🖥️ Removing screen track from all peer connections');
+
+    // Remove screen tracks from all peer connections
+    peers.current.forEach((pc, peerId) => {
+      const senders = screenSenders.current.get(peerId);
+      if (senders) {
+        senders.forEach((sender) => {
+          pc.removeTrack(sender);
+        });
+        screenSenders.current.delete(peerId);
+        console.log('✅ Removed screen tracks from peer:', peerId);
+      }
+    });
+
+    // Stop screen stream
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+    }
+
+    setScreenStream(null);
+    return true;
   };
 
   useEffect(() => {
@@ -303,6 +401,8 @@ export const useWebRTC = ({
   return {
     localStream,
     remoteStreams,
+    screenStream,
+    remoteScreenStreams,
     isConnected,
     isMuted,
     isVideoOff,
@@ -310,5 +410,7 @@ export const useWebRTC = ({
     toggleMute,
     toggleVideo,
     endCall,
+    addScreenTrack,
+    removeScreenTrack,
   };
 };

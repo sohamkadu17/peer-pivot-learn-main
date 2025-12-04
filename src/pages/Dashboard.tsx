@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { signOut } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { LogOut, BookOpen, Calendar, Users, Award, Video, Moon, Sun } from 'lucide-react';
+import { LogOut, BookOpen, Calendar, Users, Award, Video, Moon, Sun, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import UpcomingSessions from '@/components/UpcomingSessions';
@@ -299,9 +299,13 @@ export default function Dashboard() {
                   <Award className="mr-2 h-4 w-4" />
                   View Achievements
                 </Button>
-                <Button variant="outline" onClick={() => navigate('/challenges')}>
-                  <Award className="mr-2 h-4 w-4" />
-                  Challenges
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/resources')}
+                  className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                >
+                  <Share2 className="mr-2 h-4 w-4" />
+                  Resource Sharing
                 </Button>
                 <Button variant="outline" onClick={() => navigate('/leaderboard')}>
                   <Award className="mr-2 h-4 w-4" />

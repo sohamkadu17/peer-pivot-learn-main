@@ -30,8 +30,6 @@ interface FeedbackFormProps {
   sessionId?: string;
 }
 
-const ML_SERVICE_URL = import.meta.env.VITE_ML_SERVICE_URL || 'http://localhost:5000';
-
 export const FeedbackForm = ({ sessionId }: FeedbackFormProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -191,32 +189,17 @@ export const FeedbackForm = ({ sessionId }: FeedbackFormProps) => {
 
     try {
       setSubmitting(true);
-      console.log('🔍 Checking feedback for toxicity...');
-      console.log('ML Service URL:', ML_SERVICE_URL);
+      console.log('🔍 Checking feedback for toxicity via Supabase Edge Function...');
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-
-      const response = await fetch(`${ML_SERVICE_URL}/predict`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: feedback,
-          threshold: 0.7,
-        }),
-        signal: controller.signal,
+      // Use Supabase Edge Function instead of external ML service
+      const { data, error } = await supabase.functions.invoke('toxicity-filter', {
+        body: { text: feedback, threshold: 0.7 }
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Service error: ${response.statusText}`);
+      if (error) {
+        throw new Error(error.message || 'Toxicity check failed');
       }
 
-      const data = await response.json();
       console.log('✅ Toxicity check result:', data);
 
       const toxic = data.isToxic || false;
@@ -236,7 +219,6 @@ export const FeedbackForm = ({ sessionId }: FeedbackFormProps) => {
         });
       } else {
         setFeedbackError(null);
-        // Ensure state is updated before showing success message
         setIsToxic(false);
         setToxicityChecked(true);
         toast({
@@ -252,32 +234,19 @@ export const FeedbackForm = ({ sessionId }: FeedbackFormProps) => {
     } catch (error: any) {
       console.error('❌ Error checking toxicity:', error.message);
       
-      // If service is not available, allow manual approval
-      if (error.message.includes('Failed to fetch') || error.name === 'AbortError') {
-        toast({
-          title: 'Service Unavailable',
-          description: 'Content check service is offline. You can still submit your feedback.',
-          variant: 'destructive',
-        });
-        setToxicityChecked(true);
-        setIsToxic(false);
-        console.log('⚠️ Service unavailable - Allowing submission:', {
-          isToxic: false,
-          toxicityChecked: true
-        });
-      } else {
-        toast({
-          title: 'Check Failed',
-          description: error.message || 'Could not verify feedback.',
-          variant: 'destructive',
-        });
-        setToxicityChecked(true);
-        setIsToxic(false);
-        console.log('⚠️ Check failed - Allowing submission:', {
-          isToxic: false,
-          toxicityChecked: true
-        });
-      }
+      // Fail open - allow submission if service unavailable
+      toast({
+        title: 'Service Unavailable',
+        description: 'Content check service is offline. You can still submit your feedback.',
+        duration: 4000,
+      });
+      setToxicityChecked(true);
+      setIsToxic(false);
+      setFeedbackError(null);
+      console.log('⚠️ Service unavailable - Allowing submission:', {
+        isToxic: false,
+        toxicityChecked: true
+      });
     } finally {
       setSubmitting(false);
       console.log('🔍 Check complete - submitting set to false');

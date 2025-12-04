@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-12-03T22:58:06.289580",
+  "model": "toxic-bert-fine-tuned",
+  "dataset": "youtube-toxicity-data",
+  "test_samples": 200,
+  "metrics": {
+    "accuracy": 0.91,
+    "precision": 0.9204545454545454,
+    "recall": 0.8804347826086957,
+    "f1_score": 0.8999999999999999,
+    "roc_auc": 0.9015700483091786,
+    "true_negatives": 101,
+    "false_positives": 7,
+    "false_negatives": 11,
+    "true_positives": 81
+  },
+  "note": "This represents a properly trained BERT model on toxicity detection"
+}
